@@ -21,7 +21,7 @@ from pyspark.sql.window import Window
 RAW_PATH = "/Volumes/workspace/default/pharmaceutical-data/nadac-national-average-drug-acquisition-cost-08-19-2026.csv"
 OUT_PATH = "/Volumes/workspace/default/pharmaceutical-data/processed/"
 
-# 1. Read + rename + cast
+### 1. Read + rename + cast
 df = (
     spark.read.option("header", True).option("inferSchema", False).csv(RAW_PATH)
     .withColumnRenamed("NDC Description", "ndc_description")
@@ -49,11 +49,11 @@ df = (
     .withColumn("is_brand", F.col("classification").isin("B", "B-ANDA", "B-BIO"))
 )
 
-# 2. Dedupe on (ndc, effective_date) — keep latest as_of_date
+### 2. Dedupe on (ndc, effective_date) — keep latest as_of_date
 w = Window.partitionBy("ndc", "effective_date").orderBy(F.col("as_of_date").desc())
 df = df.withColumn("_rn", F.row_number().over(w)).filter("_rn = 1").drop("_rn")
 
-# 3. Derived metrics
+### 3. Derived metrics
 df = df.withColumn(
     "brand_generic_markup_pct",
     F.when(
@@ -71,7 +71,7 @@ df = df.withColumn("prior_price", F.lag("nadac_per_unit").over(w_ndc)).withColum
     ).otherwise(None),
 )
 
-# 4. Write partitioned Parquet
+### 4. Write partitioned Parquet
 df.write.mode("overwrite").partitionBy("classification").parquet(OUT_PATH)
 
 print(f"Wrote {df.count():,} rows to {OUT_PATH}")
@@ -80,7 +80,7 @@ display(df.limit(20))
 %python
 df.coalesce(1).write.mode("overwrite").option("header", True).csv("/Volumes/workspace/default/pharmaceutical-data/processed_csv/") 
 
-# CODE (SNOWFLAKE)
+## CODE (SNOWFLAKE)
 USE DATABASE nadac_db;
 USE SCHEMA nadac_db.marts;
 CREATE OR REPLACE TABLE dim_drug AS
